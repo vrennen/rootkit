@@ -19,8 +19,8 @@
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Breno Nascimento");
-MODULE_DESCRIPTION("mais syscall hook");
-MODULE_VERSION("0.02");
+MODULE_DESCRIPTION("Prova de conceito de rootkit por intercepcao de syscall");
+MODULE_VERSION("0.1");
 
 // x64 tem prefixo especifico em suas syscalls
 #define NOME_SYSCALL(syscall) ("__x64_" syscall)
