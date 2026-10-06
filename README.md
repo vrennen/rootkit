@@ -8,13 +8,12 @@ Este repositório contém a prova de conceito de um driver de kernel que atua co
 > 
 > * **NÃO** execute este código em sua máquina física principal ou em servidores de produção.
 > * Execute **APENAS** em Máquinas Virtuais (VMs) isoladas ou em ambientes onde você possui autorização explícita para testes de kernel.
-> * O autor **NÃO se responsabiliza** por Kernel Panics, corrupção de dados, perda de acesso, ex-namorados stalkers ou quaisquer danos diretos ou indiretos causados pelo uso ou modificação deste código. O uso é de sua inteira responsabilidade.
+> * O autor **NÃO se responsabiliza** por Kernel Panics, corrupção de dados, perda de acesso, namoradas stalkers ou quaisquer danos diretos ou indiretos causados pelo uso ou modificação deste código. O uso é de sua inteira responsabilidade.
 
 ---
 
 ## Funcionamento: O Bypass de Syscalls
 
-Em vez de utilizar técnicas legadas e instáveis de *hooking* (como a sobrescrita direta da `sys_call_table`), este projeto utiliza a infraestrutura moderna do **Ftrace** com a flag `IPMODIFY` para sequestrar o fluxo de execução de forma nativa e segura.
 Em vez de utilizar técnicas de hooking instáveis, como a sobrescrita direta da `sys_call_table`, este projeto usa a infraestrutura moderna do Ftrace com a flag `IPMODIFY` para desviar o fluxo de execução da syscall para uma função alternativa.
 
 O mecanismo de bypass funciona da seguinte maneira:
@@ -33,7 +32,7 @@ Este projeto foi testado em Arch Linux com kernel 7.0.14-arch1-1. Pode não func
 **2. Compile o Módulo do Kernel:**
 
 ```bash
-make
+> make
 
 ```
 
@@ -42,14 +41,14 @@ make
 **3. Em outro terminal, abra o monitor de logs do kernel:**
 
 ```bash
-sudo dmesg -w
+> sudo dmesg -w
 
 ```
 
 **4. Instale o Módulo (Ative o Escudo):**
 
 ```bash
-sudo insmod rootkit.ko
+> sudo insmod rootkit.ko
 
 ```
 
@@ -59,19 +58,19 @@ Verifique no `dmesg` se a mensagem de módulo carregado apareceu.
 Crie um arquivo `arquivo_secreto` e tente encontrar ele com o ls:
 
 ```bash
-touch arquivo_secreto
-ls
+> touch arquivo_secreto
+> ls
 
 ```
 
 **Resultado Esperado:** No terminal do `dmesg`, você verá o alerta em vermelho do módulo logando a interceptação do arquivo e o `ls` não vai mostrar o arquivo.
 
 **6. Desinstale o Módulo (Limpeza):**
-Para desativar o escudo e remover o módulo do Kernel:
+Para desativar o rootkit e remover o módulo do Kernel:
 
 ```bash
-sudo rmmod rootkit
-make clean
+> sudo rmmod rootkit
+> make clean
 ```
 
 ---
